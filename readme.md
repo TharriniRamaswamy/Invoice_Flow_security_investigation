@@ -186,3 +186,51 @@ It reinforces the importance of validating user permissions at the resource leve
 ## Disclaimer
 
 This is an intentionally vulnerable educational project developed for authorized local testing. All customer information and incident scenarios are fictional. Do not expose the vulnerable application to the public internet.
+
+## Security Remediation — Completed
+
+Following the initial BOLA/IDOR investigation, InvoiceFlow was updated to enforce authentication and object-level authorization.
+
+### Implemented Security Controls
+
+- **Session-based authentication:** Users authenticate through the `/api/login` endpoint. Flask maintains a signed session cookie.
+- **Password verification:** Passwords are checked using Werkzeug's password-hashing functions.
+- **Server-side authorization:** Each invoice request verifies that the invoice owner matches the authenticated user.
+- **Access denial:** Cross-user invoice requests return HTTP `403 Forbidden`.
+- **Unauthenticated access:** Requests without a valid session return HTTP `401 Unauthorized`.
+
+The earlier `demo_user` query parameter is no longer used to establish identity.
+
+### Automated Security Testing
+
+Six automated tests were implemented using pytest.
+
+| Test scenario | Expected result | Status |
+|---|---|---|
+| Alice accesses her own invoice | 200 OK | Passed |
+| Alice accesses Bob's invoice | 403 Forbidden | Passed |
+| Bob accesses his own invoice | 200 OK | Passed |
+| Unauthenticated invoice request | 401 Unauthorized | Passed |
+| Request for nonexistent invoice | 404 Not Found | Passed |
+| Login with incorrect password | 401 Unauthorized | Passed |
+
+**Test result: 6 passed, 0 failed.**
+
+Run the test suite:
+
+```bash
+export FLASK_SECRET_KEY="local-pytest-secret-not-for-production"
+python -m pytest -v
+```
+
+### Security Engineering Takeaway
+
+Authentication establishes the identity of the requester. Authorization determines whether that identity is permitted to access a specific resource.
+
+By enforcing authorization on every invoice request, InvoiceFlow now blocks the cross-user access demonstrated in the original investigation.
+
+### Current Limitations
+
+InvoiceFlow remains an educational prototype with fictional users, hard-coded demo credentials, and in-memory invoice storage. It is not production-ready.
+
+Additional session security tests, persistent storage, and production authentication hardening remain future improvements.
